@@ -26,6 +26,15 @@ describe("openaiToCommandCodeRequest — basic envelope", () => {
     expect(out.params.model).toBe(MODEL);
     expect(out.params.stream).toBe(true);
   });
+
+  it("clamps requested max_tokens to the CommandCode model output cap", () => {
+    const out = openaiToCommandCodeRequest("meta/muse-spark-1.2-contributor", {
+      messages: [{ role: "user", content: "hi" }],
+      max_tokens: 64000,
+    }, true);
+
+    expect(out.params.max_tokens).toBe(32768);
+  });
 });
 
 describe("openaiToCommandCodeRequest — thinking suffix stripping", () => {

@@ -18,6 +18,7 @@ import { ROLE, OPENAI_BLOCK } from "../schema/index.js";
 import { stripThinkingSuffix } from "../concerns/thinkingUnified.js";
 import { DEFAULT_MAX_TOKENS } from "../../config/runtimeConfig.js";
 import { parseDataUri } from "../concerns/image.js";
+import { getCapabilitiesForModel } from "../../providers/capabilities.js";
 
 function flattenText(content) {
   if (content == null) return "";
@@ -162,13 +163,17 @@ function convertTools(tools) {
 
 export function openaiToCommandCodeRequest(model, body, stream /* , credentials */) {
   const { messages, system } = convertMessages(body.messages);
+  const cleanModel = stripThinkingSuffix(model);
+  const requestedMaxTokens = body.max_tokens ?? body.max_output_tokens ?? DEFAULT_MAX_TOKENS;
+  const maxOutput = getCapabilitiesForModel("commandcode", cleanModel).maxOutput;
+  const maxTokens = Number.isFinite(maxOutput) ? Math.min(requestedMaxTokens, maxOutput) : requestedMaxTokens;
   const params = {
     // Upstream reads params.model and rejects unknown ids. chatCore strips only
     // the top-level model; the suffix is consumed by applyThinking, not the wire.
-    model: stripThinkingSuffix(model),
+    model: cleanModel,
     messages,
     stream: stream !== false,
-    max_tokens: body.max_tokens ?? body.max_output_tokens ?? DEFAULT_MAX_TOKENS,
+    max_tokens: maxTokens,
     temperature: body.temperature ?? 0.3,
   };
 
