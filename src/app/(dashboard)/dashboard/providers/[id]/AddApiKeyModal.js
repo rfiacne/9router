@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import PropTypes from "prop-types";
 import { Button, Badge, Input, Modal, Select, Toggle } from "@/shared/components";
 import { AI_PROVIDERS } from "@/shared/constants/providers";
@@ -54,11 +54,12 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
   const [bulkResult, setBulkResult] = useState(null); // { success, failed }
   const [zdrEnabled, setZdrEnabled] = useState(false);
 
-  // ZDR is an explicit per-connection privacy choice. Do not carry it into a
-  // subsequent add after this modal has been closed.
-  useEffect(() => {
-    if (!isOpen) setZdrEnabled(false);
-  }, [isOpen]);
+  // ZDR is an explicit per-connection privacy choice. Reset it when the modal
+  // closes so it does not leak into a subsequent add.
+  const handleClose = () => {
+    setZdrEnabled(false);
+    onClose();
+  };
 
   const buildProviderSpecificData = () => {
     if (isOllamaLocal && formData.ollamaHostUrl.trim()) {
@@ -199,7 +200,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
   if (!provider) return null;
 
   return (
-    <Modal isOpen={isOpen} title={`Add ${providerName || provider} ${credentialLabel}`} onClose={onClose}>
+    <Modal isOpen={isOpen} title={`Add ${providerName || provider} ${credentialLabel}`} onClose={handleClose}>
       <div className="flex flex-col gap-4">
         {/* Mode switcher */}
         <div className="flex gap-2">
