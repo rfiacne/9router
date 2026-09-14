@@ -213,9 +213,10 @@
   "commandcode": {
     "baseUrl": "https://api.commandcode.ai/alpha/generate",
     "format": "commandcode",
+    "thinkingFormat": "commandcode",
     "forceStream": true,
     "headers": {
-      "x-command-code-version": "0.25.7",
+      "x-command-code-version": "1.54.0",
       "x-cli-environment": "cli"
     }
   },

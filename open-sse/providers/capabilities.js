@@ -34,6 +34,7 @@
 
 import { matchPattern } from "./pricing.js";
 import { looksLikeVisionModel } from "./visionPatterns.js";
+import { COMMANDCODE_MODEL_CAPABILITIES } from "./commandcodeCapabilities.js";
 
 /**
  * Safe floor — every resolved result is merged over this so consumers
@@ -144,6 +145,10 @@ const CODEX_GPT_56_DEFAULT_CAPS = { vision: true, reasoning: true, search: true,
  * Provider-specific capability overrides. Keyed by provider alias/id.
  */
 export const PROVIDER_CAPABILITIES = {
+  // CommandCode's own catalogue + per-model reasoning effort limits. These
+  // overrides are complete because getCapabilitiesForModel merges provider
+  // overrides over DEFAULT_CAPABILITIES, not over the generic patterns below.
+  "commandcode": COMMANDCODE_MODEL_CAPABILITIES,
   // NVIDIA NIM is OpenAI-compatible → rejects MiniMax/GLM native `thinking` field.
   // Force openai reasoning_effort format for its reasoning models. #issue
   "nvidia": {
@@ -450,6 +455,16 @@ function refine(base, provider, model) {
   return result;
 }
 
+function lookupCaseInsensitive(table, key) {
+  if (!table || typeof key !== "string") return undefined;
+  if (table[key]) return table[key];
+  const lower = key.toLowerCase();
+  for (const candidate of Object.keys(table)) {
+    if (candidate.toLowerCase() === lower) return table[candidate];
+  }
+  return undefined;
+}
+
 export function getCapabilitiesForModel(provider, model) {
   if (!model) return { ...DEFAULT_CAPABILITIES };
 
@@ -459,13 +474,19 @@ export function getCapabilitiesForModel(provider, model) {
   // 1. Provider-specific override
   if (provider) {
     const providerCaps = PROVIDER_CAPABILITIES[provider];
-    if (providerCaps?.[model]) return { ...DEFAULT_CAPABILITIES, ...providerCaps[model] };
-    if (providerCaps?.[baseModel]) return { ...DEFAULT_CAPABILITIES, ...providerCaps[baseModel] };
+    if (providerCaps) {
+      const direct = providerCaps[model] ?? providerCaps[baseModel];
+      if (direct) return { ...DEFAULT_CAPABILITIES, ...direct };
+      const ci = lookupCaseInsensitive(providerCaps, model) ?? lookupCaseInsensitive(providerCaps, baseModel);
+      if (ci) return { ...DEFAULT_CAPABILITIES, ...ci };
+    }
   }
 
   // 2. Canonical exact
-  if (MODEL_CAPABILITIES[baseModel]) return { ...DEFAULT_CAPABILITIES, ...MODEL_CAPABILITIES[baseModel] };
-  if (MODEL_CAPABILITIES[model]) return { ...DEFAULT_CAPABILITIES, ...MODEL_CAPABILITIES[model] };
+  const canonical = MODEL_CAPABILITIES[baseModel] ?? MODEL_CAPABILITIES[model]
+    ?? lookupCaseInsensitive(MODEL_CAPABILITIES, baseModel)
+    ?? lookupCaseInsensitive(MODEL_CAPABILITIES, model);
+  if (canonical) return { ...DEFAULT_CAPABILITIES, ...canonical };
 
   // 3. Pattern match (first match wins), refined by catalog + name heuristic
   for (const { pattern, caps } of PATTERN_CAPABILITIES) {

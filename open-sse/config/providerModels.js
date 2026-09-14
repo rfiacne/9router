@@ -29,6 +29,13 @@ function findModel(models, modelId, aliasOrId) {
   if (!models) return undefined;
   const found = models.find(m => m.id === modelId);
   if (found) return found;
+  // Some gateways (notably CommandCode) expose the same model id with different
+  // casing between their CLI catalogue and their wire API. Fall back to a
+  // case-insensitive match before provider-specific separator handling.
+  if (typeof modelId === "string") {
+    const ci = models.find(m => m.id.toLowerCase() === modelId.toLowerCase());
+    if (ci) return ci;
+  }
   if (!DOT_VERSION_PROVIDERS.has(aliasOrId)) return undefined;
   const normalized = normalizeModelId(modelId);
   if (normalized === modelId) return undefined;

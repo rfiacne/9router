@@ -1,19 +1,21 @@
-// CommandCode alpha envelope: reasoning effort must land in params.reasoning_effort
-// regardless of the upstream model family. The wire accepts exactly
-// low|medium|high|xhigh|max; auto/none omit the field.
+// CommandCode alpha envelope: reasoning effort must land in params.reasoning_effort.
+// The official CLI catalogue also publishes the exact per-model effort enum, so we
+// verify both the wire placement and the level filtering.
 import { describe, expect, it } from "vitest";
 import "../translator/registerAll.js";
 import { translateRequest } from "../../open-sse/translator/index.js";
 import { FORMATS } from "../../open-sse/translator/formats.js";
 
-const MODELS = [
+const HIGH_SUPPORTED_MODELS = [
   "deepseek/deepseek-v4-pro",
   "deepseek/deepseek-v4-flash",
-  "moonshotai/Kimi-K2.6",
-  "zai-org/GLM-5.1",
-  "MiniMaxAI/MiniMax-M2.7",
-  "Qwen/Qwen3.6-Plus",
-  "stepfun/Step-3.5-Flash",
+  "moonshotai/kimi-k3",
+  "z-ai/glm-5.3-flash",
+  "zai-org/glm-5.2",
+  "minimaxai/minimax-m3",
+  "claude-sonnet-5",
+  "gpt-5.6-sol",
+  "meta/muse-spark-1.2-contributor",
 ];
 
 function run(model, body) {
@@ -29,27 +31,35 @@ function run(model, body) {
 }
 
 describe("CommandCode reasoning effort", () => {
-  it.each(MODELS)("forwards reasoning_effort=high into params for %s", (model) => {
+  it.each(HIGH_SUPPORTED_MODELS)("forwards reasoning_effort=high into params for %s", (model) => {
     const out = run(model, { reasoning_effort: "high" });
     expect(out.params.reasoning_effort).toBe("high");
     expect(out.reasoning_effort).toBeUndefined();
     expect(out.thinking).toBeUndefined();
   });
 
-  it.each(["xhigh", "max"])("preserves native level %s unchanged", (level) => {
-    const out = run("deepseek/deepseek-v4-pro", { reasoning_effort: level });
-    expect(out.params.reasoning_effort).toBe(level);
+  it("preserves levels declared by the official CLI metadata", () => {
+    expect(run("claude-sonnet-5", { reasoning_effort: "xhigh" }).params.reasoning_effort).toBe("xhigh");
+    expect(run("claude-sonnet-5", { reasoning_effort: "max" }).params.reasoning_effort).toBe("max");
+    expect(run("qwen/qwen3.8-max", { reasoning_effort: "xhigh" }).params.reasoning_effort).toBe("xhigh");
+  });
+
+  it("drops levels the model does not declare", () => {
+    // DeepSeek V4 only exposes high|max.
+    expect(run("deepseek/deepseek-v4-pro", { reasoning_effort: "low" }).params.reasoning_effort).toBeUndefined();
+    // Qwen 3.8 Max exposes low|medium|xhigh (not high).
+    expect(run("qwen/qwen3.8-max", { reasoning_effort: "high" }).params.reasoning_effort).toBeUndefined();
   });
 
   it("accepts the OpenAI Responses reasoning.effort shape", () => {
-    const out = run("moonshotai/Kimi-K2.6", { reasoning: { effort: "medium" } });
+    const out = run("google/gemini-3.8-flash", { reasoning: { effort: "medium" } });
     expect(out.params.reasoning_effort).toBe("medium");
   });
 
   it("folds minimal to low and omits auto/none", () => {
-    expect(run("zai-org/GLM-5.1", { reasoning_effort: "minimal" }).params.reasoning_effort).toBe("low");
-    expect(run("zai-org/GLM-5.1", { reasoning_effort: "auto" }).params.reasoning_effort).toBeUndefined();
-    expect(run("zai-org/GLM-5.1", { reasoning_effort: "none" }).params.reasoning_effort).toBeUndefined();
+    expect(run("moonshotai/kimi-k3", { reasoning_effort: "minimal" }).params.reasoning_effort).toBe("low");
+    expect(run("moonshotai/kimi-k3", { reasoning_effort: "auto" }).params.reasoning_effort).toBeUndefined();
+    expect(run("moonshotai/kimi-k3", { reasoning_effort: "none" }).params.reasoning_effort).toBeUndefined();
   });
 
   it("consumes a model(level) suffix without leaking it upstream", () => {

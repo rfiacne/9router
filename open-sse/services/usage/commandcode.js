@@ -26,7 +26,7 @@ const SUBSCRIPTIONS_URL = `${API_BASE}/alpha/billing/subscriptions`;
 
 // Announced CLI version. Kept in sync with the provider registry transport
 // header so upstream sees one consistent client identity.
-const CLI_VERSION = "0.25.7";
+const CLI_VERSION = "1.54.0";
 
 function buildHeaders(apiKey) {
   return {
