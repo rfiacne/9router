@@ -31,6 +31,8 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
   const [saving, setSaving] = useState(false);
   const [zdrEnabled, setZdrEnabled] = useState(false);
 
+  // Intentional prop→form-state sync when the modal opens or switches connection.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (connection && isOpen) {
       setFormData({
@@ -61,6 +63,7 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
       setValidationResult(null);
     }
   }, [connection, isOpen]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const isOAuth = connection?.authType === "oauth";
   const isAzure = connection?.provider === "azure";
