@@ -49,6 +49,6 @@ describe("CommandCode model catalogue", () => {
 
   it("marks text-only catalogue models as non-vision", () => {
     expect(getCapabilitiesForModel("commandcode", "deepseek/deepseek-v4-pro").vision).toBe(false);
-    expect(getCapabilitiesForModel("commandcode", "qwen/qwen3.6-plus").vision).toBe(false);
+    expect(getCapabilitiesForModel("commandcode", "Qwen/Qwen3.6-Max-Preview").vision).toBe(false);
   });
 });
