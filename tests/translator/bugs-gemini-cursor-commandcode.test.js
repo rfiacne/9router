@@ -62,8 +62,9 @@ describe("OpenAI → CommandCode", () => {
     expect(Object.keys(call.input).length, "arguments silently dropped to {}").toBeGreaterThan(0);
   });
 
-  // FIXED: data-URI images are forwarded as Anthropic-style base64 blocks.
-  it("preserves inline image content as a base64 image block", () => {
+  // FIXED: data-URI images are forwarded as AI SDK v5 image blocks, matching
+  // the official CommandCode CLI wire shape.
+  it("preserves inline image content as an AI SDK image block", () => {
     const out = O2CC({
       messages: [{ role: "user", content: [
         { type: "text", text: "look" },
@@ -73,7 +74,8 @@ describe("OpenAI → CommandCode", () => {
     const blocks = out.params.messages[0].content;
     expect(blocks).toContainEqual({
       type: "image",
-      source: { type: "base64", media_type: "image/png", data: "BBBB" },
+      image: "data:image/png;base64,BBBB",
+      mimeType: "image/png",
     });
     expect(JSON.stringify(out), "image not omitted").not.toContain("[image omitted]");
   });
@@ -88,7 +90,8 @@ describe("OpenAI → CommandCode", () => {
     });
     expect(out.params.messages[0].content).toContainEqual({
       type: "image",
-      source: { type: "base64", media_type: "image/jpeg", data: "CCCC" },
+      image: "data:image/jpeg;base64,CCCC",
+      mimeType: "image/jpeg",
     });
   });
 
@@ -101,7 +104,7 @@ describe("OpenAI → CommandCode", () => {
     });
     expect(out.params.messages[0].content).toContainEqual({
       type: "image",
-      source: { type: "url", url: "https://example.com/a.png" },
+      image: "https://example.com/a.png",
     });
   });
 

@@ -7,8 +7,8 @@
  *  - params.messages[*].content: Array of content blocks (NEVER a string)
  *  - tool_use blocks (assistant): {type:"tool-call", toolCallId, toolName, input}
  *  - tool_result blocks (role=user): {type:"tool-result", toolCallId, toolName, output}
- *  - image blocks (user): {type:"image", source:{type:"base64", media_type, data}}
- *    or {type:"image", source:{type:"url", url}} (Anthropic-style; verified live)
+ *  - image blocks (user): {type:"image", image: dataUri, mimeType}
+ *    or {type:"image", image: url} (AI SDK v5 wire, matching the official CLI)
  *  - tools[*]: Anthropic plain {name, description, input_schema}
  */
 import { register } from "../index.js";
@@ -33,7 +33,7 @@ function flattenText(content) {
   return String(content);
 }
 
-// OpenAI image block -> CommandCode (Anthropic-style) image block.
+// OpenAI image block -> CommandCode (AI SDK v5) image block.
 // Accepts OpenAI `image_url` ({url}) and AI SDK `image` ({image}) shapes.
 // Returns null when the URL is neither an inline data URI nor a fetchable
 // http(s) URL, so callers can fall back to a placeholder.
@@ -44,11 +44,12 @@ function toImageBlock(part) {
   if (parsed) {
     return {
       type: OPENAI_BLOCK.IMAGE,
-      source: { type: "base64", media_type: parsed.mimeType, data: parsed.base64 },
+      image: url,
+      mimeType: parsed.mimeType,
     };
   }
   if (typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://"))) {
-    return { type: OPENAI_BLOCK.IMAGE, source: { type: "url", url } };
+    return { type: OPENAI_BLOCK.IMAGE, image: url };
   }
   return null;
 }
