@@ -21,6 +21,10 @@ export default {
   transport: {
     baseUrl: "https://api.commandcode.ai/alpha/generate",
     format: "commandcode",
+    // CommandCode's alpha envelope carries thinking effort at params.reasoning_effort,
+    // not at the top level. Keep all CommandCode models on this wire format even when
+    // their upstream model family (deepseek/kimi/glm/qwen/...) has its own vendor format.
+    thinkingFormat: "commandcode",
     forceStream: true,
     headers: {
       "x-command-code-version": "0.25.7",

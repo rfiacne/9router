@@ -22,6 +22,8 @@ const FORMAT_LEVELS = {
   "claude-budget": L.budgetX,
   "gemini-level": L.gemini,
   "gemini-budget": L.base,
+  // CommandCode alpha wire: params.reasoning_effort accepts these exactly.
+  commandcode: ["low", "medium", "high", "xhigh", "max"],
   zai: L.onOff,
   qwen: L.base,
   kimi: L.levelMax,
@@ -35,6 +37,9 @@ const CODEX_GPT_5_6_LEVELS = ["none", "minimal", "low", "medium", "high", "xhigh
 
 // Model-name pattern overrides (glob, first match wins) — more precise than format default.
 const PATTERN_THINKING = [
+  // CommandCode exposes its own effort enum for every model on the alpha wire;
+  // keep this ahead of generic model-family patterns such as deepseek/kimi.
+  { provider: "commandcode", pattern: "*", levels: ["low", "medium", "high", "xhigh", "max"] },
   { provider: "codex", pattern: "*gpt-6*", levels: CODEX_GPT_5_6_LEVELS },
   { provider: "codex", pattern: "*gpt-5.6-sol*", levels: [...CODEX_GPT_5_6_LEVELS, "ultra"] },
   { provider: "codex", pattern: "*gpt-5.6-terra*", levels: [...CODEX_GPT_5_6_LEVELS, "ultra"] },

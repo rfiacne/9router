@@ -213,16 +213,22 @@ function ensureGeminiOutputFloor(body, floor, caps) {
 }
 
 // Strip every known thinking field from a body (used before re-applying / when unsupported).
+// CommandCode's translated envelope keeps the provider params under `body.params`, so
+// clean both the root and that nested object.
 function stripAll(body) {
-  delete body.thinking;
-  delete body.reasoning_effort;
-  delete body.reasoning;
-  delete body.thinkingConfig;
-  delete body.enable_thinking;
-  delete body.thinking_budget;
-  delete body.output_config;
-  if (body.generationConfig) delete body.generationConfig.thinkingConfig;
-  if (body.request?.generationConfig) delete body.request.generationConfig.thinkingConfig;
+  const targets = [body];
+  if (body.params && typeof body.params === "object") targets.push(body.params);
+  for (const target of targets) {
+    delete target.thinking;
+    delete target.reasoning_effort;
+    delete target.reasoning;
+    delete target.thinkingConfig;
+    delete target.enable_thinking;
+    delete target.thinking_budget;
+    delete target.output_config;
+    if (target.generationConfig) delete target.generationConfig.thinkingConfig;
+    if (target.request?.generationConfig) delete target.request.generationConfig.thinkingConfig;
+  }
 }
 
 // Apply unified thinking config to body in the resolved provider-native format.
@@ -237,6 +243,19 @@ function applyFormat(fmt, body, cfg, caps, supportedLevels) {
       if (none && canDisable) { body.reasoning_effort = "none"; break; }
       const level = toLevel(eff);
       if (level) body.reasoning_effort = normalizeOpenAILevel(level, supportedLevels);
+      break;
+    }
+    case "commandcode": {
+      // CommandCode's alpha endpoint reads the effort from params.reasoning_effort,
+      // not from the envelope root. auto/none omit the field so the upstream default
+      // applies; minimal is folded to low because the native enum starts at low.
+      const params = body.params && typeof body.params === "object" ? body.params : body;
+      let level = toLevel(eff);
+      if (level === "minimal") level = "low";
+      const validLevels = supportedLevels?.length
+        ? supportedLevels
+        : ["low", "medium", "high", "xhigh", "max"];
+      if (level && validLevels.includes(level)) params.reasoning_effort = level;
       break;
     }
     case "claude-adaptive": {
