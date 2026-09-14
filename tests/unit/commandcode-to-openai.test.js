@@ -115,6 +115,28 @@ describe("commandcode-to-openai — finish", () => {
     const last = chunks[chunks.length - 1];
     expect(last.usage).toEqual({ prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 });
   });
+
+  it("keeps cache/reasoning details when only finish-step usage carries them", () => {
+    const { chunks } = feed([
+      { type: "text-delta", text: "hi" },
+      {
+        type: "finish-step",
+        finishReason: "stop",
+        usage: {
+          inputTokens: 27650,
+          outputTokens: 10,
+          totalTokens: 27660,
+          inputTokenDetails: { noCacheTokens: 2, cacheReadTokens: 27648, cacheWriteTokens: 0 },
+          outputTokenDetails: { reasoningTokens: 4 },
+        },
+      },
+      { type: "finish", totalUsage: { inputTokens: 27650, outputTokens: 10, totalTokens: 27660 } },
+    ]);
+    const last = chunks[chunks.length - 1];
+    expect(last.usage.prompt_tokens).toBe(27650);
+    expect(last.usage.prompt_tokens_details.cached_tokens).toBe(27648);
+    expect(last.usage.completion_tokens_details.reasoning_tokens).toBe(4);
+  });
 });
 
 describe("commandcode-to-openai — error event", () => {

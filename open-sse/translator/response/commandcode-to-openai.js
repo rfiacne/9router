@@ -47,6 +47,28 @@ function makeChunk(state, delta, finishReason = null) {
 
 const mapFinishReason = (reason) => toOpenAIFinish(reason, "commandcode");
 
+// Combine finish-step usage with finish.totalUsage without dropping nested
+// AI SDK v5 details. Some upstream versions put cache/reasoning details only
+// on finish-step.usage while finish.totalUsage only carries the scalar totals.
+function combineUsage(base, override) {
+  if (!base) return override;
+  if (!override) return base;
+  const inputTokenDetails = (base.inputTokenDetails || override.inputTokenDetails)
+    ? { ...(base.inputTokenDetails || {}), ...(override.inputTokenDetails || {}) }
+    : undefined;
+  const outputTokenDetails = (base.outputTokenDetails || override.outputTokenDetails)
+    ? { ...(base.outputTokenDetails || {}), ...(override.outputTokenDetails || {}) }
+    : undefined;
+  return {
+    ...base,
+    ...override,
+    ...(inputTokenDetails ? { inputTokenDetails } : {}),
+    ...(outputTokenDetails ? { outputTokenDetails } : {}),
+    cachedInputTokens: override.cachedInputTokens ?? base.cachedInputTokens,
+    reasoningTokens: override.reasoningTokens ?? base.reasoningTokens,
+  };
+}
+
 export function commandCodeToOpenAIResponse(chunk, state) {
   if (!chunk) return null;
 
@@ -156,7 +178,7 @@ export function commandCodeToOpenAIResponse(chunk, state) {
     case "finish": {
       const finishReason = state.finishReason || mapFinishReason(event.finishReason || "stop");
       const finalChunk = makeChunk(state, {}, finishReason);
-      const totalUsage = event.totalUsage || state.usage;
+      const totalUsage = combineUsage(state.usage, event.totalUsage);
       const usage = toOpenAIUsage(totalUsage, "commandcode");
       if (usage) finalChunk.usage = usage;
       out.push(finalChunk);
