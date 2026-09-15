@@ -9,16 +9,17 @@ describe("CommandCode model catalogue", () => {
     const ids = new Set(PROVIDER_MODELS.commandcode.map((m) => m.id));
     expect(ids.has("deepseek/deepseek-v4-pro")).toBe(true);
     expect(ids.has("deepseek/deepseek-v4.1-flash")).toBe(true);
-    expect(ids.has("moonshotai/kimi-k3")).toBe(true);
-    expect(ids.has("qwen/qwen3.8-27b")).toBe(true);
+    expect(ids.has("moonshotai/Kimi-K3")).toBe(true);
+    expect(ids.has("Qwen/Qwen3.8-27B")).toBe(true);
     expect(ids.has("meta/muse-spark-1.2-contributor")).toBe(true);
     expect(ids.has("claude-sonnet-5")).toBe(true);
     expect(ids.has("gpt-5.6-sol")).toBe(true);
   });
 
-  it("resolves model ids case-insensitively", () => {
+  it("resolves model ids case-insensitively and maps aliases to canonical upstream ids", () => {
     expect(isValidModel("commandcode", "Qwen/Qwen3.8-27B")).toBe(true);
-    expect(getModelUpstreamId("commandcode", "Qwen/Qwen3.8-27B")).toBe("qwen/qwen3.8-27b");
+    expect(getModelUpstreamId("commandcode", "Qwen/Qwen3.8-27B")).toBe("Qwen/Qwen3.8-27B");
+    expect(getModelUpstreamId("commandcode", "claude-haiku-4-5")).toBe("claude-haiku-4-5-20251001");
   });
 
   it("applies the official per-model effort enum and context window", () => {
@@ -31,9 +32,9 @@ describe("CommandCode model catalogue", () => {
     });
     expect(getThinkingLevels("commandcode", "deepseek/deepseek-v4-pro")).toEqual(["high", "max"]);
 
-    const qwen = getCapabilitiesForModel("commandcode", "qwen/qwen3.8-max");
+    const qwen = getCapabilitiesForModel("commandcode", "Qwen/Qwen3.8-Max");
     expect(qwen.reasoning).toBe(true);
-    expect(getThinkingLevels("commandcode", "qwen/qwen3.8-max")).toEqual(["low", "medium", "xhigh"]);
+    expect(getThinkingLevels("commandcode", "Qwen/Qwen3.8-Max")).toEqual(["low", "medium", "xhigh"]);
 
     const muse = getCapabilitiesForModel("commandcode", "meta/muse-spark-1.2-contributor");
     expect(muse).toMatchObject({

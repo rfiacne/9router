@@ -9,10 +9,10 @@ import { FORMATS } from "../../open-sse/translator/formats.js";
 const HIGH_SUPPORTED_MODELS = [
   "deepseek/deepseek-v4-pro",
   "deepseek/deepseek-v4-flash",
-  "moonshotai/kimi-k3",
+  "moonshotai/Kimi-K3",
   "z-ai/glm-5.3-flash",
-  "zai-org/glm-5.2",
-  "minimaxai/minimax-m3",
+  "zai-org/GLM-5.2",
+  "MiniMaxAI/MiniMax-M3",
   "claude-sonnet-5",
   "gpt-5.6-sol",
   "meta/muse-spark-1.2-contributor",
@@ -41,14 +41,14 @@ describe("CommandCode reasoning effort", () => {
   it("preserves levels declared by the official CLI metadata", () => {
     expect(run("claude-sonnet-5", { reasoning_effort: "xhigh" }).params.reasoning_effort).toBe("xhigh");
     expect(run("claude-sonnet-5", { reasoning_effort: "max" }).params.reasoning_effort).toBe("max");
-    expect(run("qwen/qwen3.8-max", { reasoning_effort: "xhigh" }).params.reasoning_effort).toBe("xhigh");
+    expect(run("Qwen/Qwen3.8-Max", { reasoning_effort: "xhigh" }).params.reasoning_effort).toBe("xhigh");
   });
 
   it("drops levels the model does not declare", () => {
     // DeepSeek V4 only exposes high|max.
     expect(run("deepseek/deepseek-v4-pro", { reasoning_effort: "low" }).params.reasoning_effort).toBeUndefined();
     // Qwen 3.8 Max exposes low|medium|xhigh (not high).
-    expect(run("qwen/qwen3.8-max", { reasoning_effort: "high" }).params.reasoning_effort).toBeUndefined();
+    expect(run("Qwen/Qwen3.8-Max", { reasoning_effort: "high" }).params.reasoning_effort).toBeUndefined();
   });
 
   it("accepts the OpenAI Responses reasoning.effort shape", () => {
@@ -57,9 +57,9 @@ describe("CommandCode reasoning effort", () => {
   });
 
   it("folds minimal to low and omits auto/none", () => {
-    expect(run("moonshotai/kimi-k3", { reasoning_effort: "minimal" }).params.reasoning_effort).toBe("low");
-    expect(run("moonshotai/kimi-k3", { reasoning_effort: "auto" }).params.reasoning_effort).toBeUndefined();
-    expect(run("moonshotai/kimi-k3", { reasoning_effort: "none" }).params.reasoning_effort).toBeUndefined();
+    expect(run("moonshotai/Kimi-K3", { reasoning_effort: "minimal" }).params.reasoning_effort).toBe("low");
+    expect(run("moonshotai/Kimi-K3", { reasoning_effort: "auto" }).params.reasoning_effort).toBeUndefined();
+    expect(run("moonshotai/Kimi-K3", { reasoning_effort: "none" }).params.reasoning_effort).toBeUndefined();
   });
 
   it("consumes a model(level) suffix without leaking it upstream", () => {
