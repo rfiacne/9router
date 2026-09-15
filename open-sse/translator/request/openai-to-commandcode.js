@@ -13,12 +13,39 @@
  */
 import { register } from "../index.js";
 import { FORMATS } from "../formats.js";
-import { randomUUID } from "crypto";
+import { randomUUID, createHash } from "crypto";
 import { ROLE, OPENAI_BLOCK } from "../schema/index.js";
 import { stripThinkingSuffix } from "../concerns/thinkingUnified.js";
 import { DEFAULT_MAX_TOKENS } from "../../config/runtimeConfig.js";
 import { parseDataUri } from "../concerns/image.js";
 import { getCapabilitiesForModel } from "../../providers/capabilities.js";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// CommandCode's `threadId` is only accepted as a UUID by the official CLI
+// (`toWireThreadId`). When the client gives us a stable session/cache key we
+// derive a deterministic UUID from it; otherwise fall back to a random one.
+function stableThreadId(value) {
+  const v = typeof value === "string" ? value.trim() : "";
+  if (!v) return null;
+  if (UUID_RE.test(v)) return v;
+  const bytes = createHash("sha256").update(v).digest().subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function resolveThreadId(body, credentials) {
+  return stableThreadId(
+    body?.threadId ??
+    body?.thread_id ??
+    body?.prompt_cache_key ??
+    body?.session_id ??
+    body?.conversation_id ??
+    credentials?._clientSessionId
+  ) || randomUUID();
+}
 
 function flattenText(content) {
   if (content == null) return "";
@@ -161,12 +188,13 @@ function convertTools(tools) {
   return result.length ? result : undefined;
 }
 
-export function openaiToCommandCodeRequest(model, body, stream /* , credentials */) {
+export function openaiToCommandCodeRequest(model, body, stream, credentials) {
   const { messages, system } = convertMessages(body.messages);
   const cleanModel = stripThinkingSuffix(model);
   const requestedMaxTokens = body.max_tokens ?? body.max_output_tokens ?? DEFAULT_MAX_TOKENS;
   const maxOutput = getCapabilitiesForModel("commandcode", cleanModel).maxOutput;
   const maxTokens = Number.isFinite(maxOutput) ? Math.min(requestedMaxTokens, maxOutput) : requestedMaxTokens;
+  const promptCache = body.promptCache ?? body.prompt_cache;
   const params = {
     // Upstream reads params.model and rejects unknown ids. chatCore strips only
     // the top-level model; the suffix is consumed by applyThinking, not the wire.
@@ -186,7 +214,7 @@ export function openaiToCommandCodeRequest(model, body, stream /* , credentials 
   const today = new Date().toISOString().slice(0, 10);
 
   return {
-    threadId: randomUUID(),
+    threadId: resolveThreadId(body, credentials),
     memory: "",
     config: {
       workingDir: process.cwd(),
@@ -199,6 +227,7 @@ export function openaiToCommandCodeRequest(model, body, stream /* , credentials 
       gitStatus: "",
       recentCommits: [],
     },
+    ...(promptCache !== undefined ? { promptCache } : {}),
     params,
   };
 }

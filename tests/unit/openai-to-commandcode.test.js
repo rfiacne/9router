@@ -37,6 +37,42 @@ describe("openaiToCommandCodeRequest — basic envelope", () => {
   });
 });
 
+describe("openaiToCommandCodeRequest — threadId and promptCache", () => {
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  it("derives a stable UUID from prompt_cache_key", () => {
+    const body = { messages: [{ role: "user", content: "hi" }], prompt_cache_key: "conversation-1" };
+    const a = openaiToCommandCodeRequest(MODEL, body, true);
+    const b = openaiToCommandCodeRequest(MODEL, body, true);
+    const c = openaiToCommandCodeRequest(MODEL, { ...body, prompt_cache_key: "conversation-2" }, true);
+
+    expect(a.threadId).toMatch(uuidRe);
+    expect(a.threadId).toBe(b.threadId);
+    expect(c.threadId).not.toBe(a.threadId);
+  });
+
+  it("falls back to credentials._clientSessionId and preserves explicit UUIDs", () => {
+    const fromCredentials = openaiToCommandCodeRequest(MODEL, {
+      messages: [{ role: "user", content: "hi" }],
+    }, true, { _clientSessionId: "claude:session-1" });
+    expect(fromCredentials.threadId).toMatch(uuidRe);
+
+    const explicit = "123e4567-e89b-42d3-a456-426614174000";
+    const out = openaiToCommandCodeRequest(MODEL, {
+      messages: [{ role: "user", content: "hi" }],
+      threadId: explicit,
+    }, true);
+    expect(out.threadId).toBe(explicit);
+  });
+
+  it("passes promptCache / prompt_cache through and omits when absent", () => {
+    const messages = [{ role: "user", content: "hi" }];
+    expect(openaiToCommandCodeRequest(MODEL, { messages, promptCache: "off" }, true).promptCache).toBe("off");
+    expect(openaiToCommandCodeRequest(MODEL, { messages, prompt_cache: "off" }, true).promptCache).toBe("off");
+    expect(openaiToCommandCodeRequest(MODEL, { messages }, true)).not.toHaveProperty("promptCache");
+  });
+});
+
 describe("openaiToCommandCodeRequest — thinking suffix stripping", () => {
   it("strips a client thinking suffix from params.model (upstream rejects it)", () => {
     const out = openaiToCommandCodeRequest("gpt-5.6-luna(max)", {
